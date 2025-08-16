@@ -1,4 +1,106 @@
-<!DOCTYPE html>
+<html>
+<head>
+    <title>Notcoin 2.0 Ultimate</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        /* === CORE STYLES WITH SCROLL FIX === */
+        body {
+            background: #121212;
+            color: gold;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            touch-action: manipulation;
+            overflow-x: hidden; /* Allows vertical scrolling */
+            min-height: 100vh; /* Content can expand */
+            user-select: none;
+        }
+
+        #game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding-bottom: 100px; /* Space for scrolling */
+        }
+
+        /* === ALL YOUR EXISTING STYLES === */
+        #coin {
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle at 30% 30%, #FFD700, #B8860B);
+            border-radius: 50%;
+            margin: 20px auto;
+            cursor: pointer;
+            box-shadow: 0 0 30px yellow;
+            border: 5px solid goldenrod;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: bold;
+            color: rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+
+        .upgrades {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 20px auto;
+            max-width: 500px;
+        }
+
+        /* === NEW SCROLL-FRIENDLY STYLES === */
+        .scroll-section {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        /* Keep all your other existing styles... */
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- ALL YOUR EXISTING GAME CONTENT -->
+        <h1>NOTCOIN 2.0 ULTIMATE</h1>
+        
+        <div id="stats">
+            <div>
+                <h3>Coins: <span id="coins">0</span></h3>
+            </div>
+            <div>
+                <h3>Multiplier: <span id="multiplier">1</span>x</h3>
+            </div>
+        </div>
+
+        <div id="coin" onclick="tapCoin()">N2</div>
+
+        <!-- UPGRADES IN SCROLLABLE SECTION -->
+        <div class="scroll-section">
+            <div class="upgrades">
+                <!-- All your upgrade buttons -->
+                <button class="upgrade-btn" onclick="buyUpgrade('2x')">2x Multiplier</button>
+                <!-- Add all other buttons... -->
+            </div>
+
+            <!-- BANK SYSTEM -->
+            <div id="bank-section">
+                <!-- Bank content... -->
+            </div>
+
+            <!-- ACHIEVEMENTS -->
+            <div id="achievements">
+                <!-- Achievements content... -->
+            </div>
+        </div>
+
+        <!-- MINI-GAME CONTAINERS (unchanged) -->
+        <div id="spin-game" class="minigame-container">
+            <!-- Spin game content... -->
+        </div>
+    </div>
 <html>
 <head>
     <title>Notcoin 2.0 Ultimate</title>
@@ -792,6 +894,21 @@
         // INITIALIZE
         // =====================
         initGame();
+    </script>
+</body>
+</html>
+       // NEW: INITIALIZE SCROLLING
+        function initScroll() {
+            // Make sure elements don't overflow
+            document.querySelectorAll('.upgrade-btn').forEach(btn => {
+                btn.style.whiteSpace = 'nowrap';
+                btn.style.overflow = 'hidden';
+                btn.style.textOverflow = 'ellipsis';
+            });
+        }
+
+        // Call this after game init
+        initScroll();
     </script>
 </body>
 </html>
