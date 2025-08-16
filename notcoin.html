@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
     <title>Notcoin 2.0 Ultimate</title>
@@ -103,8 +104,8 @@
             margin-top: 20px;
         }
 
-        /* === MINI-GAME CONTAINER === */
-        #minigame-container {
+        /* === MINI-GAME CONTAINERS === */
+        .minigame-container {
             position: fixed;
             top: 0;
             left: 0;
@@ -118,6 +119,34 @@
             flex-direction: column;
             color: gold;
         }
+
+        /* === NFT GALLERY === */
+        #nft-gallery {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 20px;
+        }
+
+        .nft-item {
+            border: 2px solid gold;
+            border-radius: 10px;
+            padding: 10px;
+            background: #222;
+        }
+
+        /* === LEADERBOARD === */
+        #leaderboard {
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+
+        #leaderboard th, #leaderboard td {
+            border: 1px solid gold;
+            padding: 8px;
+        }
     </style>
 </head>
 <body>
@@ -129,6 +158,9 @@
         </div>
         <div>
             <h3>Multiplier: <span id="multiplier">1</span>x</h3>
+        </div>
+        <div>
+            <h3>Prestige: <span id="prestige">0</span></h3>
         </div>
     </div>
 
@@ -145,16 +177,22 @@
         <button class="upgrade-btn" onclick="buyUpgrade('critical')">Critical Hits (300 coins)</button>
         <button class="upgrade-btn" onclick="buyUpgrade('streak')">Tap Streaks (200 coins)</button>
         <button class="upgrade-btn" onclick="buyUpgrade('prestige')">Prestige (10,000 coins)</button>
-        <button class="upgrade-btn" onclick="startMinigame()">Lucky Spin (FREE)</button>
+        <button class="upgrade-btn" onclick="startMinigame('spin')">Lucky Spin (FREE)</button>
+        <button class="upgrade-btn" onclick="startMinigame('flip')">Coin Flip (100 coins)</button>
+        <button class="upgrade-btn" onclick="showNFTGallery()">NFT Gallery</button>
+        <button class="upgrade-btn" onclick="showLeaderboard()">Leaderboard</button>
         <button class="upgrade-btn" onclick="connectWallet()">Connect Wallet</button>
+        <button class="upgrade-btn" onclick="startTimeWarp()">Time Warp (500 coins)</button>
     </div>
 
     <div id="crypto-section">
         <h3>TON Balance: <span id="ton-balance">0</span></h3>
         <button onclick="withdrawToWallet()">Withdraw 10,000 Coins → 1 TON</button>
+        <button onclick="mintNFT()">Mint NFT (50,000 coins)</button>
     </div>
 
-    <div id="minigame-container">
+    <!-- Mini-game Containers -->
+    <div id="spin-game" class="minigame-container">
         <h2>LUCKY SPIN</h2>
         <div id="wheel" style="width: 200px; height: 200px; background: gold; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 20px;">
             SPIN ME!
@@ -163,8 +201,45 @@
         <button onclick="closeMinigame()">Close</button>
     </div>
 
+    <div id="flip-game" class="minigame-container">
+        <h2>COIN FLIP</h2>
+        <div id="flip-coin" style="width: 150px; height: 150px; background: gold; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 20px;">
+            HEADS
+        </div>
+        <button onclick="flipCoin()">FLIP (Cost: 100 coins)</button>
+        <button onclick="closeMinigame()">Close</button>
+    </div>
+
+    <div id="nft-gallery" class="minigame-container">
+        <h2>NFT GALLERY</h2>
+        <div id="nft-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px;">
+            <!-- NFTs will appear here -->
+        </div>
+        <button onclick="closeMinigame()">Close</button>
+    </div>
+
+    <div id="leaderboard" class="minigame-container">
+        <h2>LEADERBOARD</h2>
+        <table style="width: 80%;">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Coins</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+                <!-- Leaderboard entries will appear here -->
+            </tbody>
+        </table>
+        <button onclick="closeMinigame()">Close</button>
+    </div>
+
+    <!-- Audio Elements -->
     <audio id="tap-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-coin-win-notification-1992.mp3"></audio>
     <audio id="upgrade-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3"></audio>
+    <audio id="nft-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3"></audio>
+    <audio id="loss-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3"></audio>
 
     <script>
         // =====================
@@ -179,6 +254,13 @@
         let prestigeLevel = parseInt(localStorage.getItem('prestigeLevel')) || 0;
         let tonBalance = 0;
         let walletConnected = false;
+        let timeWarpActive = false;
+        let nfts = JSON.parse(localStorage.getItem('nfts')) || [];
+        let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [
+            { name: "Player1", coins: 100000 },
+            { name: "Player2", coins: 75000 },
+            { name: "Player3", coins: 50000 }
+        ];
 
         // =====================
         // DOM ELEMENTS
@@ -186,11 +268,19 @@
         const coin = document.getElementById('coin');
         const coinsDisplay = document.getElementById('coins');
         const multiplierDisplay = document.getElementById('multiplier');
+        const prestigeDisplay = document.getElementById('prestige');
         const streakBar = document.getElementById('streak-bar');
         const tonBalanceDisplay = document.getElementById('ton-balance');
-        const minigameContainer = document.getElementById('minigame-container');
+        const spinGame = document.getElementById('spin-game');
+        const flipGame = document.getElementById('flip-game');
+        const nftGallery = document.getElementById('nft-gallery');
+        const leaderboardContainer = document.getElementById('leaderboard');
+        const nftContainer = document.getElementById('nft-container');
+        const leaderboardBody = document.getElementById('leaderboard-body');
         const tapSound = document.getElementById('tap-sound');
         const upgradeSound = document.getElementById('upgrade-sound');
+        const nftSound = document.getElementById('nft-sound');
+        const lossSound = document.getElementById('loss-sound');
 
         // =====================
         // INITIALIZE GAME
@@ -198,6 +288,7 @@
         function initGame() {
             coinsDisplay.textContent = coins;
             multiplierDisplay.textContent = multiplier;
+            prestigeDisplay.textContent = prestigeLevel;
             
             if (autoClicker) {
                 startAutoClicker();
@@ -211,6 +302,12 @@
             
             // Check for daily bonus
             checkDailyBonus();
+            
+            // Load NFTs
+            renderNFTs();
+            
+            // Load leaderboard
+            updateLeaderboard();
         }
 
         // =====================
@@ -239,6 +336,11 @@
             if (tapStreak % 10 === 0) {
                 earned *= 2;
                 showStreakBonus();
+            }
+            
+            // Time warp bonus
+            if (timeWarpActive) {
+                earned *= 3;
             }
             
             // Add coins
@@ -309,6 +411,7 @@
                             autoClicker = false;
                             criticalChance = 0;
                             prestigeLevel++;
+                            prestigeDisplay.textContent = prestigeLevel;
                             showUpgradeEffect('Prestiged! All earnings +50%!');
                         }
                     }
@@ -318,6 +421,226 @@
             coinsDisplay.textContent = coins;
             multiplierDisplay.textContent = multiplier;
             saveGame();
+        }
+
+        // =====================
+        // MINI-GAME SYSTEM
+        // =====================
+        function startMinigame(game) {
+            closeMinigame();
+            if (game === 'spin') {
+                spinGame.style.display = 'flex';
+            } else if (game === 'flip') {
+                if (coins >= 100) {
+                    flipGame.style.display = 'flex';
+                } else {
+                    alert('Need 100 coins to play!');
+                }
+            }
+        }
+
+        function closeMinigame() {
+            document.querySelectorAll('.minigame-container').forEach(el => {
+                el.style.display = 'none';
+            });
+        }
+
+        function spinWheel() {
+            const wheel = document.getElementById('wheel');
+            const prizes = [100, 200, 500, 1000, 0];
+            const spinDuration = 2000;
+            
+            wheel.style.transition = `transform ${spinDuration}ms cubic-bezier(0.1, 0.7, 0.1, 1)`;
+            wheel.style.transform = 'rotate(1800deg)';
+            
+            setTimeout(() => {
+                const prize = prizes[Math.floor(Math.random() * prizes.length)];
+                coins += prize;
+                coinsDisplay.textContent = coins;
+                showUpgradeEffect(`You won ${prize} coins!`);
+                saveGame();
+                
+                wheel.style.transition = 'none';
+                wheel.style.transform = 'rotate(0deg)';
+            }, spinDuration);
+        }
+
+        function flipCoin() {
+            coins -= 100;
+            coinsDisplay.textContent = coins;
+            saveGame();
+            
+            const flipCoin = document.getElementById('flip-coin');
+            flipCoin.textContent = '...';
+            
+            setTimeout(() => {
+                const isWin = Math.random() > 0.4; // 60% chance to win
+                if (isWin) {
+                    const winnings = 200;
+                    coins += winnings;
+                    coinsDisplay.textContent = coins;
+                    flipCoin.textContent = 'WIN! +200';
+                    flipCoin.style.background = 'radial-gradient(circle, #00FF00, #008800)';
+                    tapSound.play();
+                    showUpgradeEffect('You won 200 coins!');
+                } else {
+                    flipCoin.textContent = 'LOSE';
+                    flipCoin.style.background = 'radial-gradient(circle, #FF0000, #880000)';
+                    lossSound.play();
+                    showUpgradeEffect('Better luck next time!');
+                }
+                saveGame();
+                
+                setTimeout(() => {
+                    flipCoin.textContent = 'FLIP AGAIN';
+                    flipCoin.style.background = 'gold';
+                }, 1500);
+            }, 1000);
+        }
+
+        // =====================
+        // NFT SYSTEM
+        // =====================
+        function showNFTGallery() {
+            nftGallery.style.display = 'flex';
+        }
+
+        function renderNFTs() {
+            nftContainer.innerHTML = '';
+            nfts.forEach((nft, index) => {
+                const nftElement = document.createElement('div');
+                nftElement.className = 'nft-item';
+                nftElement.innerHTML = `
+                    <h3>${nft.name}</h3>
+                    <p>Rarity: ${nft.rarity}</p>
+                    <p>Value: ${nft.value} coins</p>
+                `;
+                nftContainer.appendChild(nftElement);
+            });
+        }
+
+        function mintNFT() {
+            if (coins >= 50000) {
+                coins -= 50000;
+                coinsDisplay.textContent = coins;
+                
+                const rarities = ['Common', 'Rare', 'Epic', 'Legendary'];
+                const values = [1000, 5000, 20000, 100000];
+                const rarityIndex = Math.min(
+                    Math.floor(Math.random() * (prestigeLevel + 2)), 
+                    rarities.length - 1
+                );
+                
+                const newNFT = {
+                    name: `Notcoin NFT #${nfts.length + 1}`,
+                    rarity: rarities[rarityIndex],
+                    value: values[rarityIndex]
+                };
+                
+                nfts.push(newNFT);
+                localStorage.setItem('nfts', JSON.stringify(nfts));
+                renderNFTs();
+                
+                nftSound.play();
+                showUpgradeEffect(`Minted ${newNFT.rarity} NFT!`);
+                saveGame();
+            } else {
+                alert('Need 50,000 coins to mint NFT!');
+            }
+        }
+
+        // =====================
+        // LEADERBOARD SYSTEM
+        // =====================
+        function showLeaderboard() {
+            leaderboardContainer.style.display = 'flex';
+        }
+
+        function updateLeaderboard() {
+            leaderboardBody.innerHTML = '';
+            leaderboard.sort((a, b) => b.coins - a.coins);
+            
+            leaderboard.forEach((player, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${player.name}</td>
+                    <td>${player.coins}</td>
+                `;
+                leaderboardBody.appendChild(row);
+            });
+        }
+
+        function submitToLeaderboard() {
+            const name = prompt('Enter your name for the leaderboard:');
+            if (name) {
+                leaderboard.push({
+                    name: name,
+                    coins: coins
+                });
+                localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+                updateLeaderboard();
+                showUpgradeEffect('Added to leaderboard!');
+            }
+        }
+
+        // =====================
+        // TIME WARP SYSTEM
+        // =====================
+        function startTimeWarp() {
+            if (coins >= 500 && !timeWarpActive) {
+                coins -= 500;
+                coinsDisplay.textContent = coins;
+                timeWarpActive = true;
+                showUpgradeEffect('TIME WARP ACTIVATED! 3x coins for 30 seconds!');
+                saveGame();
+                
+                setTimeout(() => {
+                    timeWarpActive = false;
+                    showUpgradeEffect('Time warp ended');
+                }, 30000);
+            }
+        }
+
+        // =====================
+        // BLOCKCHAIN INTEGRATION
+        // =====================
+        async function connectWallet() {
+            if (typeof window.ton !== 'undefined') {
+                try {
+                    await window.ton.send('ton_requestAccounts');
+                    walletConnected = true;
+                    showUpgradeEffect('TON Wallet Connected!');
+                    updateTonBalance();
+                } catch (error) {
+                    alert('Error connecting wallet: ' + error.message);
+                }
+            } else {
+                alert('TON Wallet extension not installed!');
+            }
+        }
+
+        async function updateTonBalance() {
+            if (walletConnected) {
+                const balance = await window.ton.send('ton_getBalance');
+                tonBalance = balance;
+                tonBalanceDisplay.textContent = balance;
+            }
+        }
+
+        async function withdrawToWallet() {
+            if (walletConnected && coins >= 10000) {
+                coins -= 10000;
+                coinsDisplay.textContent = coins;
+                await window.ton.send('ton_sendTransaction', {
+                    to: 'YOUR_TON_WALLET_ADDRESS',
+                    value: '1000000000' // 1 TON in nanoTON
+                });
+                showUpgradeEffect('1 TON sent to your wallet!');
+                saveGame();
+            } else {
+                alert('Need 10,000 coins and connected wallet!');
+            }
         }
 
         // =====================
@@ -380,92 +703,6 @@
             animation.onfinish = () => critText.remove();
         }
 
-        // =====================
-        // MINI-GAME SYSTEM
-        // =====================
-        function startMinigame() {
-            minigameContainer.style.display = 'flex';
-        }
-
-        function closeMinigame() {
-            minigameContainer.style.display = 'none';
-        }
-
-        function spinWheel() {
-            const wheel = document.getElementById('wheel');
-            const prizes = [100, 200, 500, 1000, 0];
-            const spinDuration = 2000;
-            
-            wheel.style.transition = `transform ${spinDuration}ms cubic-bezier(0.1, 0.7, 0.1, 1)`;
-            wheel.style.transform = 'rotate(1800deg)';
-            
-            setTimeout(() => {
-                const prize = prizes[Math.floor(Math.random() * prizes.length)];
-                coins += prize;
-                coinsDisplay.textContent = coins;
-                showUpgradeEffect(`You won ${prize} coins!`);
-                saveGame();
-                
-                wheel.style.transition = 'none';
-                wheel.style.transform = 'rotate(0deg)';
-            }, spinDuration);
-        }
-
-        // =====================
-        // BLOCKCHAIN INTEGRATION
-        // =====================
-        async function connectWallet() {
-            if (typeof window.ton !== 'undefined') {
-                try {
-                    await window.ton.send('ton_requestAccounts');
-                    walletConnected = true;
-                    showUpgradeEffect('TON Wallet Connected!');
-                    updateTonBalance();
-                } catch (error) {
-                    alert('Error connecting wallet: ' + error.message);
-                }
-            } else {
-                alert('TON Wallet extension not installed!');
-            }
-        }
-
-        async function updateTonBalance() {
-            if (walletConnected) {
-                const balance = await window.ton.send('ton_getBalance');
-                tonBalance = balance;
-                tonBalanceDisplay.textContent = balance;
-            }
-        }
-
-        async function withdrawToWallet() {
-            if (walletConnected && coins >= 10000) {
-                coins -= 10000;
-                coinsDisplay.textContent = coins;
-                await window.ton.send('ton_sendTransaction', {
-                    to: 'YOUR_TON_WALLET_ADDRESS',
-                    value: '1000000000' // 1 TON in nanoTON
-                });
-                showUpgradeEffect('1 TON sent to your wallet!');
-                saveGame();
-            } else {
-                alert('Need 10,000 coins and connected wallet!');
-            }
-        }
-
-        // =====================
-        // UTILITY FUNCTIONS
-        // =====================
-        function startAutoClicker() {
-            if (autoClicker && !window.autoClickerInterval) {
-                window.autoClickerInterval = setInterval(tapCoin, 1000);
-            }
-        }
-
-        function updateStreakBar() {
-            const streakPercent = Math.min(100, (tapStreak % 10) * 10);
-            streakBar.style.width = streakPercent + '%';
-        }
-
         function showStreakBonus() {
             const streakBonus = document.createElement('div');
             streakBonus.textContent = 'STREAK BONUS! x2';
@@ -483,6 +720,39 @@
             ], {
                 duration: 1000
             }).onfinish = () => streakBonus.remove();
+        }
+
+        function showUpgradeEffect(message) {
+            const effect = document.createElement('div');
+            effect.textContent = message;
+            effect.style.position = 'fixed';
+            effect.style.bottom = '20px';
+            effect.style.left = '50%';
+            effect.style.transform = 'translateX(-50%)';
+            effect.style.background = 'rgba(0,0,0,0.7)';
+            effect.style.color = 'gold';
+            effect.style.padding = '10px 20px';
+            effect.style.borderRadius = '10px';
+            effect.style.zIndex = '1000';
+            document.body.appendChild(effect);
+            
+            setTimeout(() => {
+                effect.remove();
+            }, 2000);
+        }
+
+        // =====================
+        // UTILITY FUNCTIONS
+        // =====================
+        function startAutoClicker() {
+            if (autoClicker && !window.autoClickerInterval) {
+                window.autoClickerInterval = setInterval(tapCoin, 1000);
+            }
+        }
+
+        function updateStreakBar() {
+            const streakPercent = Math.min(100, (tapStreak % 10) * 10);
+            streakBar.style.width = streakPercent + '%';
         }
 
         function checkDailyBonus() {
@@ -504,30 +774,18 @@
             localStorage.setItem('autoClicker', autoClicker);
             localStorage.setItem('criticalChance', criticalChance);
             localStorage.setItem('prestigeLevel', prestigeLevel);
+            localStorage.setItem('nfts', JSON.stringify(nfts));
+            
+            // Update leaderboard if in top 10
+            const minLeaderboardScore = Math.min(...leaderboard.map(p => p.coins));
+            if (coins > minLeaderboardScore) {
+                submitToLeaderboard();
+            }
         }
 
         function getRandomColor() {
             const colors = ['gold', 'red', 'blue', 'green', 'purple', 'orange'];
             return colors[Math.floor(Math.random() * colors.length)];
-        }
-
-        function showUpgradeEffect(message) {
-            const effect = document.createElement('div');
-            effect.textContent = message;
-            effect.style.position = 'fixed';
-            effect.style.bottom = '20px';
-            effect.style.left = '50%';
-            effect.style.transform = 'translateX(-50%)';
-            effect.style.background = 'rgba(0,0,0,0.7)';
-            effect.style.color = 'gold';
-            effect.style.padding = '10px 20px';
-            effect.style.borderRadius = '10px';
-            effect.style.zIndex = '1000';
-            document.body.appendChild(effect);
-            
-            setTimeout(() => {
-                effect.remove();
-            }, 2000);
         }
 
         // =====================
