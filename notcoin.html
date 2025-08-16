@@ -1,20 +1,23 @@
 <html>
 <head>
-    <title>Notcoin 2.0</title>
+    <title>Notcoin 2.0 Ultimate</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
+        /* === CORE STYLES === */
         body {
-            background: #000;
+            background: #121212;
             color: gold;
             text-align: center;
-            font-family: Arial;
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
             touch-action: manipulation;
             overflow: hidden;
             height: 100vh;
+            user-select: none;
         }
+        
         #coin {
             width: 250px;
             height: 250px;
@@ -30,105 +33,507 @@
             font-size: 40px;
             font-weight: bold;
             color: rgba(0,0,0,0.3);
-            user-select: none;
             transition: transform 0.1s;
+            position: relative;
+            z-index: 10;
         }
-        #counter {
-            font-size: 24px;
-            margin: 20px 0;
+
+        /* === PARTICLE EFFECTS === */
+        .particle {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
         }
+
+        /* === UPGRADES MENU === */
         .upgrades {
-            display: flex;
-            justify-content: center;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 10px;
-            margin-top: 20px;
-            flex-wrap: wrap;
+            margin: 20px auto;
+            max-width: 500px;
         }
+
         .upgrade-btn {
             background: #333;
             color: gold;
             border: 2px solid gold;
-            padding: 10px 15px;
+            padding: 10px;
             border-radius: 10px;
             cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upgrade-btn:hover {
+            background: #444;
+        }
+
+        /* === STATS DISPLAY === */
+        #stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        /* === PROGRESS BARS === */
+        .progress-container {
+            width: 100%;
+            background: #333;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: gold;
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* === BLOCKCHAIN UI === */
+        #crypto-section {
+            background: rgba(0,0,0,0.7);
+            border: 1px solid gold;
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 20px;
+        }
+
+        /* === MINI-GAME CONTAINER === */
+        #minigame-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: gold;
         }
     </style>
 </head>
 <body>
-    <h1>NOTCOIN 2.0</h1>
-    <div id="counter">Coins: <span id="coins">0</span></div>
-    <div id="coin" onclick="tapCoin()">N2</div>
-
-    <!-- UPGRADES SECTION -->
-    <div class="upgrades">
-        <button class="upgrade-btn" onclick="buyUpgrade('2x')">2x Multiplier (Cost: 100)</button>
-        <button class="upgrade-btn" onclick="buyUpgrade('auto')">Auto-Clicker (Cost: 500)</button>
-        <button class="upgrade-btn" onclick="buyUpgrade('4x')">2x Multiplier (Cost: 400)</button>
-        <button class="upgrade-btn" onclick="buyUpgrade('8x')">2x Multiplier (Cost: 800)</button>
+    <h1>NOTCOIN 2.0 ULTIMATE</h1>
+    
+    <div id="stats">
+        <div>
+            <h3>Coins: <span id="coins">0</span></h3>
+        </div>
+        <div>
+            <h3>Multiplier: <span id="multiplier">1</span>x</h3>
+        </div>
     </div>
 
+    <div class="progress-container">
+        <div id="streak-bar" class="progress-bar"></div>
+    </div>
+    
+    <div id="coin" onclick="tapCoin()">N2</div>
+
+    <div class="upgrades">
+        <button class="upgrade-btn" onclick="buyUpgrade('2x')">2x Multiplier (100 coins)</button>
+        <button class="upgrade-btn" onclick="buyUpgrade('5x')">5x Multiplier (500 coins)</button>
+        <button class="upgrade-btn" onclick="buyUpgrade('auto')">Auto-Clicker (1000 coins)</button>
+        <button class="upgrade-btn" onclick="buyUpgrade('critical')">Critical Hits (300 coins)</button>
+        <button class="upgrade-btn" onclick="buyUpgrade('streak')">Tap Streaks (200 coins)</button>
+        <button class="upgrade-btn" onclick="buyUpgrade('prestige')">Prestige (10,000 coins)</button>
+        <button class="upgrade-btn" onclick="startMinigame()">Lucky Spin (FREE)</button>
+        <button class="upgrade-btn" onclick="connectWallet()">Connect Wallet</button>
+    </div>
+
+    <div id="crypto-section">
+        <h3>TON Balance: <span id="ton-balance">0</span></h3>
+        <button onclick="withdrawToWallet()">Withdraw 10,000 Coins → 1 TON</button>
+    </div>
+
+    <div id="minigame-container">
+        <h2>LUCKY SPIN</h2>
+        <div id="wheel" style="width: 200px; height: 200px; background: gold; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 20px;">
+            SPIN ME!
+        </div>
+        <button onclick="spinWheel()">SPIN (Cost: 0 coins)</button>
+        <button onclick="closeMinigame()">Close</button>
+    </div>
+
+    <audio id="tap-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-coin-win-notification-1992.mp3"></audio>
+    <audio id="upgrade-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3"></audio>
+
     <script>
-        // Game State
-        let coins = 0;
-        let multiplier = 1;
-        let autoClicker = false;
-        const coin = document.getElementById("coin");
-        const coinsDisplay = document.getElementById("coins");
+        // =====================
+        // GAME STATE
+        // =====================
+        let coins = parseInt(localStorage.getItem('coins')) || 0;
+        let multiplier = parseInt(localStorage.getItem('multiplier')) || 1;
+        let autoClicker = localStorage.getItem('autoClicker') === 'true';
+        let criticalChance = parseInt(localStorage.getItem('criticalChance')) || 0;
+        let tapStreak = 0;
+        let maxTapStreak = 0;
+        let prestigeLevel = parseInt(localStorage.getItem('prestigeLevel')) || 0;
+        let tonBalance = 0;
+        let walletConnected = false;
 
-        // Sound Effects
-        const tapSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-coin-win-notification-1992.mp3');
-        const buySound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3');
+        // =====================
+        // DOM ELEMENTS
+        // =====================
+        const coin = document.getElementById('coin');
+        const coinsDisplay = document.getElementById('coins');
+        const multiplierDisplay = document.getElementById('multiplier');
+        const streakBar = document.getElementById('streak-bar');
+        const tonBalanceDisplay = document.getElementById('ton-balance');
+        const minigameContainer = document.getElementById('minigame-container');
+        const tapSound = document.getElementById('tap-sound');
+        const upgradeSound = document.getElementById('upgrade-sound');
 
-        // Main Tap Function
+        // =====================
+        // INITIALIZE GAME
+        // =====================
+        function initGame() {
+            coinsDisplay.textContent = coins;
+            multiplierDisplay.textContent = multiplier;
+            
+            if (autoClicker) {
+                startAutoClicker();
+            }
+            
+            // Load prestige bonus
+            if (prestigeLevel > 0) {
+                multiplier *= (1 + prestigeLevel * 0.5);
+                multiplierDisplay.textContent = multiplier;
+            }
+            
+            // Check for daily bonus
+            checkDailyBonus();
+        }
+
+        // =====================
+        // CORE GAMEPLAY
+        // =====================
         function tapCoin() {
+            // Play sound
+            tapSound.currentTime = 0;
             tapSound.play();
-            coins += multiplier;
+            
+            // Calculate base coins
+            let earned = multiplier;
+            
+            // Critical hit chance
+            if (criticalChance > 0 && Math.random() < (criticalChance / 100)) {
+                earned *= 10;
+                showCriticalEffect();
+            }
+            
+            // Add to streak
+            tapStreak++;
+            if (tapStreak > maxTapStreak) maxTapStreak = tapStreak;
+            updateStreakBar();
+            
+            // Apply streak bonus every 10 taps
+            if (tapStreak % 10 === 0) {
+                earned *= 2;
+                showStreakBonus();
+            }
+            
+            // Add coins
+            coins += earned;
             coinsDisplay.textContent = coins;
             
-            // Bounce Effect
-            coin.style.transform = "scale(0.9)";
+            // Visual effects
+            createParticles();
+            animateCoinTap();
+            
+            // Save progress
+            saveGame();
+        }
+
+        // =====================
+        // UPGRADES SYSTEM
+        // =====================
+        function buyUpgrade(type) {
+            upgradeSound.currentTime = 0;
+            upgradeSound.play();
+            
+            switch(type) {
+                case '2x':
+                    if (coins >= 100) {
+                        coins -= 100;
+                        multiplier += 1;
+                        showUpgradeEffect('2x Multiplier Unlocked!');
+                    }
+                    break;
+                    
+                case '5x':
+                    if (coins >= 500) {
+                        coins -= 500;
+                        multiplier += 4;
+                        showUpgradeEffect('5x Multiplier Unlocked!');
+                    }
+                    break;
+                    
+                case 'auto':
+                    if (coins >= 1000) {
+                        coins -= 1000;
+                        autoClicker = true;
+                        startAutoClicker();
+                        showUpgradeEffect('Auto-Clicker Activated!');
+                    }
+                    break;
+                    
+                case 'critical':
+                    if (coins >= 300) {
+                        coins -= 300;
+                        criticalChance += 5;
+                        showUpgradeEffect('+5% Critical Chance!');
+                    }
+                    break;
+                    
+                case 'streak':
+                    if (coins >= 200) {
+                        coins -= 200;
+                        showUpgradeEffect('Tap Streaks Enabled!');
+                    }
+                    break;
+                    
+                case 'prestige':
+                    if (coins >= 10000) {
+                        if (confirm('Prestige will reset your coins but give permanent bonuses!')) {
+                            coins = 0;
+                            multiplier = 1;
+                            autoClicker = false;
+                            criticalChance = 0;
+                            prestigeLevel++;
+                            showUpgradeEffect('Prestiged! All earnings +50%!');
+                        }
+                    }
+                    break;
+            }
+            
+            coinsDisplay.textContent = coins;
+            multiplierDisplay.textContent = multiplier;
+            saveGame();
+        }
+
+        // =====================
+        // SPECIAL EFFECTS
+        // =====================
+        function createParticles() {
+            for (let i = 0; i < 5; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.background = getRandomColor();
+                
+                const coinRect = coin.getBoundingClientRect();
+                const startX = coinRect.left + coinRect.width/2;
+                const startY = coinRect.top + coinRect.height/2;
+                
+                particle.style.left = startX + 'px';
+                particle.style.top = startY + 'px';
+                document.body.appendChild(particle);
+                
+                // Animate particle
+                const animation = particle.animate([
+                    { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+                    { transform: `translate(${Math.random()*200-100}px, ${Math.random()*200-100}px) scale(0)`, opacity: 0 }
+                ], {
+                    duration: 1000,
+                    easing: 'cubic-bezier(0,0.2,0.8,1)'
+                });
+                
+                animation.onfinish = () => particle.remove();
+            }
+        }
+
+        function animateCoinTap() {
+            coin.style.transform = 'scale(0.9)';
             setTimeout(() => {
-                coin.style.transform = "scale(1)";
+                coin.style.transform = 'scale(1)';
             }, 100);
         }
 
-        // Upgrades System
-        function buyUpgrade(type) {
-            if (type === '2x' && coins >= 100) {
-                coins -= 100;
-                multiplier = 2;
-                buySound.play();
-                alert("2x Multiplier Activated!");
-            } 
-            else if (type === 'auto' && coins >= 500) {
-                coins -= 500;
-                autoClicker = true;
-                buySound.play();
-                setInterval(tapCoin, 1000); // Auto-click every second
-                alert("Auto-Clicker Activated!");
-            } 
-            else if (type === '4x' && coins >= 400) {
-                coins -= 400;
-                multiplier = 4;
-                buySound.play();
-                alert("4x Multiplier Activated!");
-            } 
-            else if (type === '8x' && coins >= 800) {
-                coins -= 800;
-                multiplier = 8;
-                buySound.play();
-                alert("8x Multiplier Activated!");
-            } 
-            else {
-                alert("Not enough coins!");
-            }
-            coinsDisplay.textContent = coins;
+        function showCriticalEffect() {
+            const critText = document.createElement('div');
+            critText.textContent = 'CRITICAL! x10';
+            critText.style.position = 'absolute';
+            critText.style.color = 'red';
+            critText.style.fontWeight = 'bold';
+            critText.style.fontSize = '24px';
+            critText.style.left = '50%';
+            critText.style.top = '30%';
+            critText.style.transform = 'translateX(-50%)';
+            critText.style.zIndex = '100';
+            document.body.appendChild(critText);
+            
+            const animation = critText.animate([
+                { opacity: 1, transform: 'translate(-50%, 0) scale(1)' },
+                { opacity: 0, transform: 'translate(-50%, -100px) scale(1.5)' }
+            ], {
+                duration: 1000
+            });
+            
+            animation.onfinish = () => critText.remove();
         }
 
-        // Disable Zooming
-        document.addEventListener('dblclick', function(e) {
-            e.preventDefault();
-        }, { passive: false });
+        // =====================
+        // MINI-GAME SYSTEM
+        // =====================
+        function startMinigame() {
+            minigameContainer.style.display = 'flex';
+        }
+
+        function closeMinigame() {
+            minigameContainer.style.display = 'none';
+        }
+
+        function spinWheel() {
+            const wheel = document.getElementById('wheel');
+            const prizes = [100, 200, 500, 1000, 0];
+            const spinDuration = 2000;
+            
+            wheel.style.transition = `transform ${spinDuration}ms cubic-bezier(0.1, 0.7, 0.1, 1)`;
+            wheel.style.transform = 'rotate(1800deg)';
+            
+            setTimeout(() => {
+                const prize = prizes[Math.floor(Math.random() * prizes.length)];
+                coins += prize;
+                coinsDisplay.textContent = coins;
+                showUpgradeEffect(`You won ${prize} coins!`);
+                saveGame();
+                
+                wheel.style.transition = 'none';
+                wheel.style.transform = 'rotate(0deg)';
+            }, spinDuration);
+        }
+
+        // =====================
+        // BLOCKCHAIN INTEGRATION
+        // =====================
+        async function connectWallet() {
+            if (typeof window.ton !== 'undefined') {
+                try {
+                    await window.ton.send('ton_requestAccounts');
+                    walletConnected = true;
+                    showUpgradeEffect('TON Wallet Connected!');
+                    updateTonBalance();
+                } catch (error) {
+                    alert('Error connecting wallet: ' + error.message);
+                }
+            } else {
+                alert('TON Wallet extension not installed!');
+            }
+        }
+
+        async function updateTonBalance() {
+            if (walletConnected) {
+                const balance = await window.ton.send('ton_getBalance');
+                tonBalance = balance;
+                tonBalanceDisplay.textContent = balance;
+            }
+        }
+
+        async function withdrawToWallet() {
+            if (walletConnected && coins >= 10000) {
+                coins -= 10000;
+                coinsDisplay.textContent = coins;
+                await window.ton.send('ton_sendTransaction', {
+                    to: 'YOUR_TON_WALLET_ADDRESS',
+                    value: '1000000000' // 1 TON in nanoTON
+                });
+                showUpgradeEffect('1 TON sent to your wallet!');
+                saveGame();
+            } else {
+                alert('Need 10,000 coins and connected wallet!');
+            }
+        }
+
+        // =====================
+        // UTILITY FUNCTIONS
+        // =====================
+        function startAutoClicker() {
+            if (autoClicker && !window.autoClickerInterval) {
+                window.autoClickerInterval = setInterval(tapCoin, 1000);
+            }
+        }
+
+        function updateStreakBar() {
+            const streakPercent = Math.min(100, (tapStreak % 10) * 10);
+            streakBar.style.width = streakPercent + '%';
+        }
+
+        function showStreakBonus() {
+            const streakBonus = document.createElement('div');
+            streakBonus.textContent = 'STREAK BONUS! x2';
+            streakBonus.style.position = 'absolute';
+            streakBonus.style.color = 'cyan';
+            streakBonus.style.fontWeight = 'bold';
+            streakBonus.style.left = '50%';
+            streakBonus.style.top = '40%';
+            streakBonus.style.transform = 'translateX(-50%)';
+            document.body.appendChild(streakBonus);
+            
+            streakBonus.animate([
+                { opacity: 1, transform: 'translate(-50%, 0)' },
+                { opacity: 0, transform: 'translate(-50%, -50px)' }
+            ], {
+                duration: 1000
+            }).onfinish = () => streakBonus.remove();
+        }
+
+        function checkDailyBonus() {
+            const lastPlayed = localStorage.getItem('lastPlayed');
+            const today = new Date().toDateString();
+            
+            if (lastPlayed !== today) {
+                coins += 1000;
+                coinsDisplay.textContent = coins;
+                localStorage.setItem('lastPlayed', today);
+                showUpgradeEffect('Daily Bonus: +1000 coins!');
+                saveGame();
+            }
+        }
+
+        function saveGame() {
+            localStorage.setItem('coins', coins);
+            localStorage.setItem('multiplier', multiplier);
+            localStorage.setItem('autoClicker', autoClicker);
+            localStorage.setItem('criticalChance', criticalChance);
+            localStorage.setItem('prestigeLevel', prestigeLevel);
+        }
+
+        function getRandomColor() {
+            const colors = ['gold', 'red', 'blue', 'green', 'purple', 'orange'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        function showUpgradeEffect(message) {
+            const effect = document.createElement('div');
+            effect.textContent = message;
+            effect.style.position = 'fixed';
+            effect.style.bottom = '20px';
+            effect.style.left = '50%';
+            effect.style.transform = 'translateX(-50%)';
+            effect.style.background = 'rgba(0,0,0,0.7)';
+            effect.style.color = 'gold';
+            effect.style.padding = '10px 20px';
+            effect.style.borderRadius = '10px';
+            effect.style.zIndex = '1000';
+            document.body.appendChild(effect);
+            
+            setTimeout(() => {
+                effect.remove();
+            }, 2000);
+        }
+
+        // =====================
+        // INITIALIZE
+        // =====================
+        initGame();
     </script>
 </body>
 </html>
